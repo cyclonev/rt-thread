@@ -1,16 +1,17 @@
 /*
- * linker script for STM32F10x with GNU ld
- * bernard.xiong 2009-10-14
+ * linker script for STM32F4xx with GNU ld
+ * bernard.xiong 2013-07-06
  */
 
 /* Program Entry, set to mark it as "used" and avoid gc */
 MEMORY
 {
-    CODE (rx) : ORIGIN = 0x08000000, LENGTH = 512k /* 512KB flash */
-    DATA (rw) : ORIGIN = 0x20000000, LENGTH =  64k /* 64K sram */
+    CODE (rx) : ORIGIN = 0x08000000, LENGTH =   1M /*   1MB flash */
+    DATA (rw) : ORIGIN = 0x20000000, LENGTH = 128k /* 128KB sram */
+    CCM  (rw) : ORIGIN = 0x10000000, LENGTH =  64k /*  64KB CCM, no execution, no DMA. */
 }
 ENTRY(Reset_Handler)
-_system_stack_size = 0x100;
+_system_stack_size = 0x300;
 
 SECTIONS
 {
@@ -105,6 +106,14 @@ SECTIONS
     __bss_end = .;
 
     _end = .;
+    
+    .ccm :
+    {
+        . = ALIGN(4);
+        _ccm_start = .;
+        *(.CCM)
+        _ccm_end = .;
+    } > CCM
 
     /* Stabs debugging sections.  */
     .stab          0 : { *(.stab) }
