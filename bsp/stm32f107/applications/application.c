@@ -54,6 +54,40 @@ void rt_init_thread_entry(void* parameter)
         }
     }
 #endif /* RT_USING_DFS && RT_USING_DFS_ELMFAT */
+
+    rt_hw_led_init();
+    rt_hw_led_on(0);
+    rt_hw_led_on(1);
+    rt_hw_led_on(2);
+    rt_hw_led_on(3);
+    rt_thread_delay(RT_TICK_PER_SECOND);
+    rt_hw_led_off(0);
+    rt_hw_led_off(1);
+    rt_hw_led_off(2);
+    rt_hw_led_off(3);
+    rt_thread_delay(RT_TICK_PER_SECOND);
+    while(1)
+    {
+        rt_hw_led_on(0);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+        rt_hw_led_off(0);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+
+        rt_hw_led_on(1);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+        rt_hw_led_off(1);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+
+        rt_hw_led_on(2);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+        rt_hw_led_off(2);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+
+        rt_hw_led_on(3);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+        rt_hw_led_off(3);
+        rt_thread_delay(RT_TICK_PER_SECOND/4);
+    }
 }
 
 int rt_application_init(void)
