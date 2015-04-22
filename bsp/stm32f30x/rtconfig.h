@@ -57,6 +57,8 @@
 /* Using Small MM */
 #define RT_USING_SMALL_MEM
 
+#define RT_USING_LIBC
+
 /* SECTION: Device System */
 /* Using Device System */
 #define RT_USING_DEVICE
