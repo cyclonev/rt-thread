@@ -1,7 +1,7 @@
 /*
  * File      : usart.c
  * This file is part of RT-Thread RTOS
- * COPYRIGHT (C) 2009, RT-Thread Development Team
+ * COPYRIGHT (C) 2006-2015, RT-Thread Development Team
  *
  * The license and distribution terms for this file may be
  * found in the file LICENSE in this distribution or at
@@ -11,7 +11,7 @@
  * Date           Author       Notes
  * 2009-01-05     Bernard      the first version
  * 2010-03-29     Bernard      remove interrupt Tx and DMA Rx mode
- * 2013-07-06     aozima       update for STM32F3xx.
+ * 2015-04-22     aozima       update for STM32F3xx.
  */
 
 
@@ -72,15 +72,25 @@ static rt_err_t stm32_configure(struct rt_serial_device *serial, struct serial_c
     else if (cfg->stop_bits == STOP_BITS_2)
         USART_InitStructure.USART_StopBits = USART_StopBits_2;
 
-    USART_InitStructure.USART_Parity = USART_Parity_No;
+    if (cfg->parity == PARITY_NONE)
+    {
+        USART_InitStructure.USART_Parity = USART_Parity_No;
+    }
+    else if (cfg->parity == PARITY_ODD)
+    {
+        USART_InitStructure.USART_Parity = USART_Parity_Odd;
+    }
+    else if (cfg->parity == PARITY_EVEN)
+    {
+        USART_InitStructure.USART_Parity = USART_Parity_Even;
+    }
+
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
     USART_Init(uart->uart_device, &USART_InitStructure);
 
     /* Enable USART */
     USART_Cmd(uart->uart_device, ENABLE);
-    /* enable interrupt */
-    USART_ITConfig(uart->uart_device, USART_IT_RXNE, ENABLE);
 
     return RT_EOK;
 }
@@ -94,13 +104,19 @@ static rt_err_t stm32_control(struct rt_serial_device *serial, int cmd, void *ar
 
     switch (cmd)
     {
+        /* disable interrupt */
     case RT_DEVICE_CTRL_CLR_INT:
         /* disable rx irq */
         UART_DISABLE_IRQ(uart->irq);
+        /* disable interrupt */
+        USART_ITConfig(uart->uart_device, USART_IT_RXNE, DISABLE);
         break;
+        /* enable interrupt */
     case RT_DEVICE_CTRL_SET_INT:
         /* enable rx irq */
         UART_ENABLE_IRQ(uart->irq);
+        /* enable interrupt */
+        USART_ITConfig(uart->uart_device, USART_IT_RXNE, ENABLE);
         break;
     }
 
@@ -149,7 +165,6 @@ static const struct rt_uart_ops stm32_uart_ops =
 
 #if defined(RT_USING_USART1)
 /* USART1 device driver structure */
-static struct serial_ringbuffer uart1_int_rx;
 static struct stm32_uart uart1 =
 {
     USART1,
@@ -167,16 +182,20 @@ void USART1_IRQHandler(void)
     rt_interrupt_enter();
     if(USART_GetITStatus(uart->uart_device, USART_IT_RXNE) != RESET)
     {
-        rt_hw_serial_isr(&serial1);
+        rt_hw_serial_isr(&serial1, RT_SERIAL_EVENT_RX_IND);
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_RXNE);
     }
+
     if (USART_GetITStatus(uart->uart_device, USART_IT_TC) != RESET)
     {
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_TC);
     }
-
+    if (USART_GetFlagStatus(uart->uart_device, USART_FLAG_ORE) == SET)
+    {
+        stm32_getc(&serial1);
+    }
     /* leave interrupt */
     rt_interrupt_leave();
 }
@@ -184,7 +203,6 @@ void USART1_IRQHandler(void)
 
 #if defined(RT_USING_USART2)
 /* USART2 device driver structure */
-static struct serial_ringbuffer uart2_int_rx;
 static struct stm32_uart uart2 =
 {
     USART2,
@@ -200,16 +218,23 @@ void USART2_IRQHandler(void)
 
     /* enter interrupt */
     rt_interrupt_enter();
+
     if(USART_GetITStatus(uart->uart_device, USART_IT_RXNE) != RESET)
     {
-        rt_hw_serial_isr(&serial2);
+        rt_hw_serial_isr(&serial2, RT_SERIAL_EVENT_RX_IND);
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_RXNE);
     }
+
     if (USART_GetITStatus(uart->uart_device, USART_IT_TC) != RESET)
     {
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_TC);
+    }
+
+    if (USART_GetFlagStatus(uart->uart_device, USART_FLAG_ORE) == SET)
+    {
+        stm32_getc(&serial2);
     }
 
     /* leave interrupt */
@@ -219,7 +244,6 @@ void USART2_IRQHandler(void)
 
 #if defined(RT_USING_USART3)
 /* USART3 device driver structure */
-static struct serial_ringbuffer uart3_int_rx;
 static struct stm32_uart uart3 =
 {
     USART3,
@@ -235,16 +259,23 @@ void USART3_IRQHandler(void)
 
     /* enter interrupt */
     rt_interrupt_enter();
+
     if(USART_GetITStatus(uart->uart_device, USART_IT_RXNE) != RESET)
     {
-        rt_hw_serial_isr(&serial3);
+        rt_hw_serial_isr(&serial3, RT_SERIAL_EVENT_RX_IND);
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_RXNE);
     }
+
     if (USART_GetITStatus(uart->uart_device, USART_IT_TC) != RESET)
     {
         /* clear interrupt */
         USART_ClearITPendingBit(uart->uart_device, USART_IT_TC);
+    }
+
+    if (USART_GetFlagStatus(uart->uart_device, USART_FLAG_ORE) == SET)
+    {
+        stm32_getc(&serial3);
     }
 
     /* leave interrupt */
@@ -324,7 +355,7 @@ static void NVIC_Configuration(struct stm32_uart* uart)
     NVIC_InitStructure.NVIC_IRQChannel = uart->irq;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
     NVIC_Init(&NVIC_InitStructure);
 }
 
@@ -346,14 +377,13 @@ void rt_hw_usart_init(void)
     config.invert    = NRZ_NORMAL;
 
     serial1.ops    = &stm32_uart_ops;
-    serial1.int_rx = &uart1_int_rx;
     serial1.config = config;
 
     NVIC_Configuration(&uart1);
 
     /* register UART1 device */
     rt_hw_serial_register(&serial1, "usart1",
-                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_STREAM,
+                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX,
                           uart);
 #endif
 
@@ -368,14 +398,13 @@ void rt_hw_usart_init(void)
     config.invert    = NRZ_NORMAL;
 
     serial2.ops    = &stm32_uart_ops;
-    serial2.int_rx = &uart2_int_rx;
     serial2.config = config;
 
     NVIC_Configuration(&uart2);
 
     /* register UART1 device */
     rt_hw_serial_register(&serial2, "usart2",
-                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_STREAM,
+                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX,
                           uart);
 #endif
 
@@ -390,14 +419,13 @@ void rt_hw_usart_init(void)
     config.invert    = NRZ_NORMAL;
 
     serial3.ops    = &stm32_uart_ops;
-    serial3.int_rx = &uart3_int_rx;
     serial3.config = config;
 
     NVIC_Configuration(&uart3);
 
     /* register UART1 device */
     rt_hw_serial_register(&serial3, "usart3",
-                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_STREAM,
+                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX,
                           uart);
 #endif
 }
